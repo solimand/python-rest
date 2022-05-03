@@ -61,10 +61,8 @@ def main():
             print("App "+APP_TO_CHECK+" already installed. EXIT.")
             return
     
-    # # START TIMER --> app is not here 
+    # app is not here! --> START TIMER --> deploy
     start = time.time()
-
-    # ASSUMPTION TWO --> I know the devie IP, I have only to install APP
     r_deploy = requests.post(url = DEPLOY_URL, files = deploy_files, data=deploy_data, verify=False)
     print(r_deploy.json())
     if(r_deploy.status_code!=200):
@@ -72,11 +70,14 @@ def main():
         return
 
     # check installed app
-    # ASSUMPTION THREE --> cannot find a "GET jobs" - I use the List Apps to check the installation
+    # ASSUMPTION TWO --> cannot find a "GET jobs" - I use the List Apps to check the installation
     r_apps = requests.get(url = LS_APP_URL+"deviceid="+deviceId, headers=getDevices_headers, verify=False)
+    counter=0
     while (r_apps.text.find(APP_TO_CHECK)==-1):
-        print("Installing...")
-        time.sleep(2)
+        counter=counter+1
+        if(counter%5 == 0):
+            print("Loop counter = %d. Still installing..." %counter)
+        time.sleep(0.5)
         r_apps = requests.get(url = LS_APP_URL+"deviceid="+deviceId, headers=getDevices_headers, verify=False)
 
     print("App "+APP_TO_CHECK+" successfully installed. EXIT.")
