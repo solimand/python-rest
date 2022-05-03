@@ -4,6 +4,7 @@ Simply python REST API call using ```request``` module
 # Requirements
 - python 3
 - module ```request```
+- Uninstall app on Device (otherwise the script finds it and stops)
 
 # Deployment
 Chain call:
