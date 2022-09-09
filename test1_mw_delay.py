@@ -7,13 +7,13 @@ from multiprocessing import Process
 # 4 set the path of the collection in the following variable
 collection = "C:/Users/it164/OneDrive/Desktop/brex/DeepMon-MW-test-sharing.postman_collection.json"
 # command = "newman run "+ collection 
-command = "newman run "+ collection + " -r csv --reporter-csv-includeBody --reporter-csv-export ./OneDrive/Desktop/brex/csv/csv_20r_5d"
+command = "newman run "+ collection + " -r csv --reporter-csv-includeBody --reporter-csv-export ./csv/csv_20r_5d"
 
 def run_requests():
     os.system(command)
 
 if __name__ == "__main__":
-    for f in range(1):       
+    for f in range(20):       
         p1 = Process(target = run_requests)
         p1.start()
         
