@@ -1,0 +1,11 @@
+import os
+import glob
+import pandas as pd
+
+# this script will merge the different csv files in the csv folder
+os.chdir("./csv")
+
+extension = 'csv'
+all_filenames = [i for i in glob.glob('*.{}'.format(extension))]
+combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames ])
+combined_csv.to_csv( "combined_csv_csv_20r_5d.csv", index=False, encoding='utf-8-sig')
