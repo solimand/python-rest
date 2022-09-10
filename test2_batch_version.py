@@ -11,12 +11,23 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # api-endpoint
 # TODO check API new version
 MAN_ENDPOINT = "10.0.7.253:9443"
-DEV_ENDPOINT = "10.0.7.132:8083"
+MW_ENDPOINT = "10.0.7.132:8083"
+DEV_ENDPOINT = "192.168.101.23"
+
+# V1 API
 LOGIN_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
 LS_DEV_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/devices"
 LS_APP_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/devices/installed-apps?"
-LS_JOBS_URL = ""
-DEPLOY_URL = "http://"+DEV_ENDPOINT+"/deploy"
+GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/:batchId"
+
+# DEV API
+LIST_APP_DEV = "https://" + DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
+LOGIN_DEV = "https://" + DEV_ENDPOINT + "/device/edge/api/v1/login/direct"
+
+# Middleware API
+DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
+
+
 APP_TO_CHECK = "helloworld"
 APP_VER = "0.0.1"
 time_s = []
@@ -35,13 +46,12 @@ def main():
         'password':API_PWD}
     login_headers = {'content-type': 'application/json'}
     getDevices_headers = {'accept-language': 'en-US', 'authorization' : ''}
-    # deploy_data = {'name' : APP_TO_CHECK, 'version' : APP_TO_CHECK, 'platform' : 'siemens'}
     deploy_data = {'name' : APP_TO_CHECK, 'version' : APP_VER, 'platform' : 'siemens'}
     deploy_files = {'file' : open('./compose.yml','rb')}
     
-
     # POST login
-    r_login = requests.post(url = LOGIN_URL, data=json.dumps(login_data), headers=login_headers, verify=False)
+    # API V1 r_login = requests.post(url = LOGIN_URL, data=json.dumps(login_data), headers=login_headers, verify=False)
+    r_login = requests.post(url = LOGIN_DEV, data=json.dumps(login_data), headers=login_headers, verify=False)
     
     # check return value
     if (r_login.status_code!=200):
@@ -53,34 +63,34 @@ def main():
     print("\nThe token is: %s\n" %str(api_access_token))
     getDevices_headers['authorization'] = api_access_token
 
-    # GET devices (ASSUMPTION ONE --> I consider the first ([0]) device of the list)
-    # --- 08efe36153fb4e559c3e8ffcbe9b6ccc ---
-    #[0] position of the device 192.168.101.23
-    r_devices = requests.get(url = LS_DEV_URL, headers=getDevices_headers, verify=False)
-    deviceId = r_devices.json()["data"][0]["deviceId"]
+    # NOTE for API DEV we skipped the GET devices call
+        # GET devices (ASSUMPTION ONE --> I consider the first ([0]) device of the list)
+        # --- 08efe36153fb4e559c3e8ffcbe9b6ccc ---
+        #[0] position of the device 192.168.101.23
+        # r_devices = requests.get(url = LS_DEV_URL, headers=getDevices_headers, verify=False)
+        # deviceId = r_devices.json()["data"][0]["deviceId"]
+        # print("\nThe deviceID is: %s\n" %deviceId)
     
-    print("\nThe deviceID is: %s\n" %deviceId)
-    
-    # # GET installed apps on device
-    r_apps = requests.get(url = LS_APP_URL+"deviceid="+deviceId, headers=getDevices_headers, verify=False)
+    # GET installed apps on device
+        # API V1
+        # r_apps = requests.get(url = LS_APP_URL+"deviceid="+deviceId, headers=getDevices_headers, verify=False)
+
+    r_apps = requests.get(url = LIST_APP_DEV, headers=getDevices_headers, verify=False)
     for a in r_apps.json()["data"]:
-        # print(a["title"]) #DEBUG
         if (a["title"]==APP_TO_CHECK): #app already installed
             print("App "+APP_TO_CHECK+" already installed. EXIT.") 
-            # print("The APP_ID is:" + a["applicationId"])
             return
     print("app is not here! --> START TIMER --> deploy")
+
     start = time.time()
     start_pending = time.time()
-    # start_status = time.time()
     r_deploy = requests.post(url = DEPLOY_URL, files = deploy_files, data=deploy_data, verify=False)
     print("RESPONSE -- ", r_deploy.json())
-    print(r_deploy.json)
-    # gia na dw se poso xrono epistrefetai to response
-    ## START TIMER after post
-    
+    print(r_deploy.json)    
     batch_id = r_deploy.json()["batch_id"]
     print("BATCH_ ID : ",batch_id)
+
+    # TODO fix the jobID/batchID retrieval 
     batch_id_response = os.system("iectl portal batches get-batch-jobs --batchId "+ batch_id)
     while(batch_id_response == 1):
         time.sleep(0.1)
@@ -141,6 +151,6 @@ def main():
     time.sleep(60)
     
     
-for i in range(10):
-    if __name__ == "__main__":
-        main()
+#for i in range(10):
+if __name__ == "__main__":
+    main()
