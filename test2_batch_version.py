@@ -1,3 +1,4 @@
+from fileinput import close
 from sys import argv
 import requests
 import json
@@ -5,6 +6,7 @@ import time
 import urllib3
 import os
 import subprocess as sp
+import csv
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -24,6 +26,7 @@ BATCH_STATUS_READY = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 # DEV API
 LIST_APP_DEV = "https://" + DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
 LOGIN_DEV = "https://" + DEV_ENDPOINT + "/device/edge/api/v1/login/direct"
+UNINSTALL_APP = "https://" + DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/"
 
 # Middleware API
 DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
@@ -123,7 +126,7 @@ def main():
     # is not found yet on the management
     # DEV API
     #NOTE batch_id comming has only 1 job in position [0] of data. If more than 1 jobs are linked check..
-    time.sleep(1)
+    time.sleep(2)
     r_status = requests.get(url = GET_JOB_STATUS + batch_id +"/jobs", headers=get_Batch_headers,verify=False) #getting the job status using the batch_id
     status =  r_status.json()["data"][0]["status"]
 
@@ -132,7 +135,6 @@ def main():
         status =  r_status.json()["data"][0]["status"]
         print(status)
     end_pending = time.time()
-
 
     print(r_deploy.elapsed)
     if(r_deploy.status_code!=200):
@@ -166,7 +168,17 @@ def main():
     elapsed_time_pending = end_pending - start_pending
     elapsed_time_excecuted = elapsed_time - elapsed_time_pending
 
-    print ("Time= ", str(elapsed_time), "PENDING TIME : ", elapsed_time_pending, " EXCECUTED TIME : ", elapsed_time_excecuted)
+    # writing results
+    currResult = "Time= " + str(elapsed_time) + ", PENDING TIME : " + str(elapsed_time_pending) + " EXCECUTED TIME : " + str(elapsed_time_excecuted)
+    csvheader = ['TIME', 'PENDING', 'EXECUTING']
+    csvrow = [str(elapsed_time), str(elapsed_time_pending), str(elapsed_time_excecuted)]
+    print(currResult)
+    outfile = open("./csv/test2Time.csv", "a+")
+    csvwriter = csv.writer(outfile)
+    csvwriter.writerow(csvheader)
+    csvwriter.writerow(csvrow)
+    outfile.close()
+
     for a in r_apps.json()["data"]:
         if (a["title"]==APP_TO_CHECK):
             print("The APP_ID is:" + a["applicationId"])  
@@ -176,13 +188,16 @@ def main():
     time.sleep(3)
     # uninstall app from device
     # python save command output to variable output = sp.getoutput(command)
-    os.system("iectl portal batches submit-batch --appid " + APP_ID +" --infoMap " + '{"devices":[\"08efe36153fb4e559c3e8ffcbe9b6ccc\"]}' + " --operation uninstallApplication")
+    # os.system("iectl portal batches submit-batch --appid " + APP_ID +" --infoMap " + '{"devices":[\"08efe36153fb4e559c3e8ffcbe9b6ccc\"]}' + " --operation uninstallApplication")
     # delete app from catalog
     # os.system("iectl publisher edgemanagement application -a " + APP_ID + " deletecatalogapplication")
+    r_delapp = requests.post(url = UNINSTALL_APP+APP_ID+"/uninstall", headers=getDevices_headers, verify=False)
+    if(r_delapp.status_code==200):
+        print("App Deleted!")
     time.sleep(60)
     
     
-for i in range(30): 
+for i in range(1): 
 # for stress test: is running the script 10 times
     if __name__ == "__main__":
         main()
