@@ -1,0 +1,8 @@
+version: '2.4'
+
+services:
+  helloworld:
+    image: 10.0.7.120:5000/helloworld:latest
+    container_name: helloworld
+    mem_limit: 50mb
+    

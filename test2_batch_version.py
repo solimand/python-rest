@@ -29,7 +29,7 @@ LOGIN_DEV = "https://" + DEV_ENDPOINT + "/device/edge/api/v1/login/direct"
 DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 
 
-APP_TO_CHECK = "helloworld"
+APP_TO_CHECK = "httpdtest"
 APP_VER = "0.0.1"
 time_s = []
 os.environ['EDGE_SKIP_TLS'] = '1'
@@ -123,6 +123,7 @@ def main():
     # is not found yet on the management
     # DEV API
     #NOTE batch_id comming has only 1 job in position [0] of data. If more than 1 jobs are linked check..
+    time.sleep(1)
     r_status = requests.get(url = GET_JOB_STATUS + batch_id +"/jobs", headers=get_Batch_headers,verify=False) #getting the job status using the batch_id
     status =  r_status.json()["data"][0]["status"]
 
@@ -169,18 +170,19 @@ def main():
     for a in r_apps.json()["data"]:
         if (a["title"]==APP_TO_CHECK):
             print("The APP_ID is:" + a["applicationId"])  
-            x = a["applicationId"]
-    APP_ID= x
+            APP_ID = a["applicationId"]
+
     print("Proceed to uninstall app with id : " + APP_ID + ". Are you sure? ..") 
     time.sleep(3)
     # uninstall app from device
     # python save command output to variable output = sp.getoutput(command)
     os.system("iectl portal batches submit-batch --appid " + APP_ID +" --infoMap " + '{"devices":[\"08efe36153fb4e559c3e8ffcbe9b6ccc\"]}' + " --operation uninstallApplication")
     # delete app from catalog
-    os.system("iectl publisher edgemanagement application -a " + APP_ID + " deletecatalogapplication")
+    # os.system("iectl publisher edgemanagement application -a " + APP_ID + " deletecatalogapplication")
     time.sleep(60)
     
     
-#for i in range(10): for stress test: is running the script 10 times
-if __name__ == "__main__":
-    main()
+for i in range(30): 
+# for stress test: is running the script 10 times
+    if __name__ == "__main__":
+        main()
