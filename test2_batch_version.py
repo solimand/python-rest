@@ -16,7 +16,7 @@ MW_ENDPOINT = "10.0.7.132:8083"
 DEV_ENDPOINT = "192.168.101.23"
 
 # V1 API
-LOGIN_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
+LOGIN_MAN_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
 LS_DEV_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/devices"
 LS_APP_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/devices/installed-apps?"
 # GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/:batchId"
@@ -25,7 +25,7 @@ BATCH_STATUS_READY = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 
 # DEV API
 LIST_APP_DEV = "https://" + DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
-LOGIN_DEV = "https://" + DEV_ENDPOINT + "/device/edge/api/v1/login/direct"
+LOGIN_DEV_URL = "https://" + DEV_ENDPOINT + "/device/edge/api/v1/login/direct"
 UNINSTALL_APP = "https://" + DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/"
 
 # Middleware API
@@ -40,18 +40,18 @@ os.environ['EDGE_SKIP_TLS'] = '1'
 def main():
     # check args
     if (len(argv)<3):
-        print("usage -- python caller.py <iem_user> <iem_password>") #todo add docs
-        return    
-    API_NAME = argv[1]
-    API_PWD = argv[2]
-    API_NAME_MAN = argv[1]
-    API_PWD_MAN = argv[3]
+        print("usage -- python <program_name> <iem_user> <ied_password> <iem_password>") 
+        return
+        #TODO change names accordingly to content
+    IEM_USERNAME = argv[1]
+    IED_USERNAME = IEM_USERNAME 
+    IED_USERPWD = argv[2]
+    IEM_USERPWD = argv[3]
 
     # HEADERS and PAYLOADS (as Python dictionary)
-    login_data = {'username':API_NAME,
-        'password':API_PWD}
-    login_data_man = {'username':API_NAME_MAN,
-        'password':API_PWD_MAN}
+    ied_login_data = {'username':IED_USERNAME, 'password':IED_USERPWD}
+    iem_login_data = {'username':IEM_USERNAME, 'password':IEM_USERPWD}
+
     login_headers = {'content-type': 'application/json'}
     getDevices_headers = {'accept-language': 'en-US', 'authorization' : ''}
     get_Batch_headers = {'accept': 'application/json', 'authorization': ''}
@@ -62,16 +62,16 @@ def main():
     
     # POST login
     # API V1 r_login = requests.post(url = LOGIN_URL, data=json.dumps(login_data), headers=login_headers, verify=False)
-    r_login = requests.post(url = LOGIN_DEV, data=json.dumps(login_data), headers=login_headers, verify=False)
-    r_login_man = requests.post(url = LOGIN_URL, data=json.dumps(login_data_man), headers=login_headers, verify=False)
+    r_login_dev = requests.post(url = LOGIN_DEV_URL, data=json.dumps(ied_login_data), headers=login_headers, verify=False)
+    r_login_man = requests.post(url = LOGIN_MAN_URL, data=json.dumps(iem_login_data), headers=login_headers, verify=False)
 
     # check return value
-    if (r_login.status_code!=200):
-        print("Something went wrong. Error code = "+str(r_login.status_code))
+    if (r_login_dev.status_code!=200):
+        print("Something went wrong. Error code = "+str(r_login_dev.status_code))
         return
 
     # extracting token
-    api_access_token = r_login.json()["data"]["access_token"]
+    api_access_token = r_login_dev.json()["data"]["access_token"]
     api_access_token_man = r_login_man.json()["data"]["access_token"]
     print("\nThe token for device login is: %s\n" %str(api_access_token))
     print("\nThe token for management login is: %s\n" %str(api_access_token_man))
