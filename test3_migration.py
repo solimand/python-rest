@@ -9,11 +9,15 @@ MAN_ENDPOINT = "10.0.7.253:9443"
 MW_ENDPOINT = "10.0.7.132:8083"
 PHY_DEV_ENDPOINT = "192.168.101.23"
 VIR_DEV_ENDPOINT_1 = "10.0.7.60"
-PHY_DEV_ENDPOINT_2 = "10.0.7.249"
+VIR_DEV_ENDPOINT_2 = "10.0.7.249"
 
 # APIs
 IED_LOGIN_URL = "https://"+PHY_DEV_ENDPOINT+"/device/edge/api/v1/login/direct"
 IED_SYS_INFO_URL = "https://"+PHY_DEV_ENDPOINT+"/device/edge/b.service/api/v1/system-info"
+
+# Threshold
+MAX_CPU_PERC = 30
+MAX_MEM_PERC = 30
 
 def main():
     # check args
@@ -48,6 +52,15 @@ def main():
     print("\nThe perc of MEM used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(ied_mem_perc)))
     print("\nThe perc of CPU used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(ied_cpu_perc)))
 
+    if (ied_mem_perc<MAX_CPU_PERC):
+        print("No need for load balancing")
+        return
+
+    print("Trying to load balancing the device...")
+
+    #TODO APP LIST - GET APP ID - STOP&UNINSTALL
+    #TODO LOGIN TO SECOND DEVICE - DEPLOY APP
+    
     return
 
 
