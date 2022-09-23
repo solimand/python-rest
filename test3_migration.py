@@ -15,6 +15,7 @@ VIR_DEV_ENDPOINT_2 = "10.0.7.60"
 # APIs
 IED_LOGIN_URL_PHY = "https://"+PHY_DEV_ENDPOINT+"/device/edge/api/v1/login/direct"
 IED_LOGIN_URL_VIR_1 = "https://"+VIR_DEV_ENDPOINT_1+"/device/edge/api/v1/login/direct"
+IED_LOGIN_URL_VIR_2 = "https://"+VIR_DEV_ENDPOINT_2+"/device/edge/api/v1/login/direct"
 
 IED_SYS_INFO_URL_PHY = "https://"+PHY_DEV_ENDPOINT+"/device/edge/b.service/api/v1/system-info"
 IED_SYS_INFO_URL_VIR_1 = "https://"+VIR_DEV_ENDPOINT_1+"/device/edge/b.service/api/v1/system-info"
@@ -35,26 +36,20 @@ APP_TO_CHECK = "stress"
 
 def main():
     # check args
-    if (len(argv)<3):
-        print("usage -- python <prog_name> <ied_user> <ied_password>") #TODO start with source->dest devices
+    if (len(argv)<4):
+        print("usage -- python <prog_name> <ied_user> <ied_source_password> <ied_dest_password>")
         return    
     IED_USERNAME = argv[1]
-    IED_USERPWD = argv[2]
+    IED_USERPWD_SRC = argv[2]
+    IED_USERPWD_DEST = argv[3]
 
-    # POST login
-    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IED_USERNAME,IED_USERPWD)
+    # # POST login
+    # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IED_USERNAME,IED_USERPWD_SRC)
 
-    # GET Dev Info
-    # ied_res_dev_info = requests.get(url = IED_SYS_INFO_URL, headers=dev_info_header, verify=False)
-    # if (ied_res_dev_info.status_code!=200):
-    #     print("Something went wrong in the device info api. Error code = "+str(ied_res_dev_info.status_code))
-    #     return
-    # ied_cpu_perc = ied_res_dev_info.json()["data"]["CpuPercentage"]
-    # ied_mem_perc = ied_res_dev_info.json()["data"]["MemoryPercentage"]
-
-    mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
-    print("\nThe perc of MEM used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(mem_usage)))
-    print("\nThe perc of CPU used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(cpu_usage)))
+    # # GET Dev Info
+    # mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
+    # print("\nThe perc of MEM used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(mem_usage)))
+    # print("\nThe perc of CPU used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(cpu_usage)))
 
     # # CHECK Threshold
     # if (ied_mem_perc<MAX_CPU_PERC):
@@ -63,17 +58,22 @@ def main():
 
     print("Trying to load balancing the device...")
 
-    # GET app ID - STOP app - UNINSTALL app
-    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
-    print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
-    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "stop")):
-        print("App %s successfully stopped" %(APP_TO_CHECK))
-    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
-        print("App %s successfully uninstalled" %(APP_TO_CHECK))
+    # # GET app ID - STOP app - UNINSTALL app
+    # appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    # print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
+    # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "stop")):
+    #     print("App %s successfully stopped" %(APP_TO_CHECK))
+    # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
+    #     print("App %s successfully uninstalled" %(APP_TO_CHECK))
 
 
-    #TODO LOGIN TO SECOND DEVICE - DEPLOY APP
-    
+    #TODO LOGIN TO SECOND MNGMT - INSTALL APP ON DEVICE ON CATALOG
+    # iem_api_access_token = loginTo(
+    # https://{{iem_endpoint}}/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552 (I need the device ID and app ID)
+    #
+
+
+
     return
 
 #----------------------------------------------------------------------------
