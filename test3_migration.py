@@ -25,26 +25,34 @@ LIST_APP_DEV_PHY = "https://" + PHY_DEV_ENDPOINT + "/device/edge/b.service/api/v
 
 APP_CTRL_DEV_VIR_1 = "https://" + VIR_DEV_ENDPOINT_1 + "/device/edge/b.service/api/v1/applications/"
 
+IEM_LOGIN = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
+
+#IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid="
+IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/p.service/api/v4/applications/b490fab908b74244af564652dd4ff552/batch?operation=installApplication&allow=true"
+
 # Threshold
 MAX_CPU_PERC = 30
 MAX_MEM_PERC = 30
 
 # Other Globals
 APP_TO_CHECK = "stress"
+IED_ID_PHY = "08efe36153fb4e559c3e8ffcbe9b6ccc"
+IED_ID_VIR_1 = "6021b42db4bc4f6da8aca78a65e45dd2"
+IED_ID_VIR_2 = "b3dd9c7cf7b347668624b66e04fd5592"
 
 #----------------------------------------------------------------------------
 
 def main():
     # check args
     if (len(argv)<4):
-        print("usage -- python <prog_name> <ied_user> <ied_source_password> <ied_dest_password>")
+        print("usage -- python <prog_name> <ied_user> <ied_source_password> <iem_pwd>")
         return    
-    IED_USERNAME = argv[1]
+    IE_USERNAME = argv[1]
     IED_USERPWD_SRC = argv[2]
-    IED_USERPWD_DEST = argv[3]
+    IEM_PWD = argv[3]
 
     # # POST login
-    # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IED_USERNAME,IED_USERPWD_SRC)
+    # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_USERPWD_SRC)
 
     # # GET Dev Info
     # mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
@@ -67,12 +75,23 @@ def main():
     #     print("App %s successfully uninstalled" %(APP_TO_CHECK))
 
 
-    #TODO LOGIN TO SECOND MNGMT - INSTALL APP ON DEVICE ON CATALOG
-    # iem_api_access_token = loginTo(
-    # https://{{iem_endpoint}}/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552 (I need the device ID and app ID)
-    #
+    iem_api_access_token = loginTo(IEM_LOGIN, IE_USERNAME, IEM_PWD)
+    #TODO Dev ID and App ID as parameters
+    # TODO Clean tests
+    # url = IEM_INSTALL_ON_IED#+"b490fab908b74244af564652dd4ff552"
+    # iem_install_data = {'infoMap': '{"devices":["b3dd9c7cf7b347668624b66e04fd5592"]}'}
+    # files=[]
+    # iem_install_headers = {
+    #     'Accept-Language': 'en-US',
+    #     'authorization' : iem_api_access_token,
+    #     #'Content-Type': 'multipart/form-data'
+    # }    
+    # iem_install_res = requests.post(url, headers=iem_install_headers, data=iem_install_data, files=files, verify=False)    
+    # if (iem_install_res.status_code!=200):
+    #     sys.exit("Something went wrong in the app installation. Error code = " + str(iem_install_res.status_code)+ "\nTEXT = " + str(iem_install_res.text))
 
 
+    #TODO check app running
 
     return
 
