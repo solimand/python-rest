@@ -3,6 +3,10 @@ from sys import argv
 import sys
 import requests
 import json
+import time
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 #----------------------------------------------------------------------------
 # Endpoints
@@ -21,14 +25,17 @@ IED_SYS_INFO_URL_PHY = "https://"+PHY_DEV_ENDPOINT+"/device/edge/b.service/api/v
 IED_SYS_INFO_URL_VIR_1 = "https://"+VIR_DEV_ENDPOINT_1+"/device/edge/b.service/api/v1/system-info"
 
 LIST_APP_DEV_VIR_1 = "https://" + VIR_DEV_ENDPOINT_1 + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
+LIST_APP_DEV_VIR_2 = "https://" + VIR_DEV_ENDPOINT_2 + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
 LIST_APP_DEV_PHY = "https://" + PHY_DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/search/pages/1?pageSize=100"
 
 APP_CTRL_DEV_VIR_1 = "https://" + VIR_DEV_ENDPOINT_1 + "/device/edge/b.service/api/v1/applications/"
 
 IEM_LOGIN = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
+GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 
-#IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid="
-IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/p.service/api/v4/applications/b490fab908b74244af564652dd4ff552/batch?operation=installApplication&allow=true"
+#IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/p.service/api/v4/applications/b490fab908b74244af564652dd4ff552/batch?operation=installApplication&allow=true"
+
+DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 
 # Threshold
 MAX_CPU_PERC = 30
@@ -36,20 +43,25 @@ MAX_MEM_PERC = 30
 
 # Other Globals
 APP_TO_CHECK = "stress"
+APP_VER = "0.0.1"
 IED_ID_PHY = "08efe36153fb4e559c3e8ffcbe9b6ccc"
 IED_ID_VIR_1 = "6021b42db4bc4f6da8aca78a65e45dd2"
 IED_ID_VIR_2 = "b3dd9c7cf7b347668624b66e04fd5592"
+APP_NOT_INSTALLED = "app is not here!"
 
 #----------------------------------------------------------------------------
+# TODO 
+    #   - Timing
+    #   - Test all
 
 def main():
     # check args
     if (len(argv)<4):
-        print("usage -- python <prog_name> <ied_user> <ied_source_password> <iem_pwd>")
+        print("usage -- python <prog_name> <ied_user> <ied_source_password> <ied_source_password>")
         return    
     IE_USERNAME = argv[1]
     IED_USERPWD_SRC = argv[2]
-    IEM_PWD = argv[3]
+    IED_USERPWD_DEST = argv[3]
 
     # # POST login
     # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_USERPWD_SRC)
@@ -74,26 +86,23 @@ def main():
     # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
     #     print("App %s successfully uninstalled" %(APP_TO_CHECK))
 
+    # DEPLOY
+    deploy_files = {'file' : open('./compose.yml','rb')}
+    deploy_data = {'name' : APP_TO_CHECK, 'version' : APP_VER, 'platform' : 'siemens'}
+    res_mw_deploy = requests.post(url = DEPLOY_URL, files = deploy_files, data=deploy_data, verify=False)
+    if (res_mw_deploy.status_code!=200):
+        sys.exit("Something went wrong in the app installation. Error code = " + str(res_mw_deploy.status_code)+ "\nTEXT = " + str(res_mw_deploy.text))
+    
+    # CHECK INSTALLATION
+    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_2, IE_USERNAME, IED_USERPWD_DEST)
+    appID = APP_NOT_INSTALLED
+    while(appID==APP_NOT_INSTALLED):
+        print("installing...")
+        time.sleep(2)
+        appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)        
+    print("app installed")
 
-    iem_api_access_token = loginTo(IEM_LOGIN, IE_USERNAME, IEM_PWD)
-    #TODO Dev ID and App ID as parameters
-    # TODO Clean tests
-    # url = IEM_INSTALL_ON_IED#+"b490fab908b74244af564652dd4ff552"
-    # iem_install_data = {'infoMap': '{"devices":["b3dd9c7cf7b347668624b66e04fd5592"]}'}
-    # files=[]
-    # iem_install_headers = {
-    #     'Accept-Language': 'en-US',
-    #     'authorization' : iem_api_access_token,
-    #     #'Content-Type': 'multipart/form-data'
-    # }    
-    # iem_install_res = requests.post(url, headers=iem_install_headers, data=iem_install_data, files=files, verify=False)    
-    # if (iem_install_res.status_code!=200):
-    #     sys.exit("Something went wrong in the app installation. Error code = " + str(iem_install_res.status_code)+ "\nTEXT = " + str(iem_install_res.text))
-
-
-    #TODO check app running
-
-    return
+    sys.exit(0)
 
 #----------------------------------------------------------------------------
 
@@ -122,7 +131,7 @@ def checkAppInstalled (url, appName, access_token):
     for a in r_list_apps.json()["data"]:
         if (a["title"]==appName): #app installed
             return a["applicationId"]
-    return "app is not here!"
+    return APP_NOT_INSTALLED
 
 
 def appControl (url, api_token, app_id, operation):

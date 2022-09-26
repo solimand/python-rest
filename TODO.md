@@ -1,1 +1,1 @@
-1. Create Environment Variables File
+1. Create (Environment Variables)/(Functions) File
