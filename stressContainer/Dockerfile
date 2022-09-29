@@ -5,4 +5,5 @@ RUN apk update --no-cache && \
 
 # ENTRYPOINT ["stress-ng"]
 
+# TODO config file
 CMD ["stress-ng", "--cpu", "1", "--timeout", "10m"]

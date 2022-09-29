@@ -38,7 +38,7 @@ GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 
 # Threshold
-MAX_CPU_PERC = 30
+MAX_CPU_PERC = 10
 MAX_MEM_PERC = 30
 
 # Other Globals
@@ -53,6 +53,7 @@ APP_NOT_INSTALLED = "app is not here!"
 # TODO 
     #   - Timing
     #   - Test all
+    #   - Parametrize R->V  V->V    V->R
 
 def main():
     # check args
@@ -63,28 +64,30 @@ def main():
     IED_USERPWD_SRC = argv[2]
     IED_USERPWD_DEST = argv[3]
 
-    # # POST login
-    # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_USERPWD_SRC)
+    # POST login
+    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_USERPWD_SRC)
+    
+    # TODO install app if not installed 
 
-    # # GET Dev Info
-    # mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
-    # print("\nThe perc of MEM used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(mem_usage)))
-    # print("\nThe perc of CPU used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(cpu_usage)))
-
-    # # CHECK Threshold
-    # if (ied_mem_perc<MAX_CPU_PERC):
-    #     print("No need for load balancing")
-    #     return
+    # GET Dev Info - Loop till threshold
+    while True:
+        mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
+        print("\nThe perc of MEM used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(mem_usage)))
+        print("\nThe perc of CPU used on device %s is: %s\n" %(str(PHY_DEV_ENDPOINT), str(cpu_usage)))
+        if (float(cpu_usage)>MAX_CPU_PERC):
+            break
 
     print("Trying to load balancing the device...")
 
-    # # GET app ID - STOP app - UNINSTALL app
-    # appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
-    # print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
-    # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "stop")):
-    #     print("App %s successfully stopped" %(APP_TO_CHECK))
-    # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
-    #     print("App %s successfully uninstalled" %(APP_TO_CHECK))
+    # TODO Start time
+
+    # GET app ID - STOP app - UNINSTALL app
+    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
+    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "stop")):
+        print("App %s successfully stopped\n" %(APP_TO_CHECK))
+    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
+        print("App %s successfully uninstalled\n" %(APP_TO_CHECK))
 
     # DEPLOY
     deploy_files = {'file' : open('./compose.yml','rb')}
@@ -99,8 +102,10 @@ def main():
     while(appID==APP_NOT_INSTALLED):
         print("installing...")
         time.sleep(2)
-        appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)        
-    print("app installed")
+        appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)
+    
+    # TODO stop time        
+    print("app installed, cluster balanced")
 
     sys.exit(0)
 
