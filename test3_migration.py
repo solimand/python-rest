@@ -67,22 +67,18 @@ DEVICE_VIR2 = 3
 def main():
     # check args
     if (len(argv)<4):
-        print("usage -- python <prog_name> <ied_user> <ied_source_pwd> <ied_dest_pwd>")# <iem_pwd>")
+        print("usage -- python <prog_name> <ied_user> <ied_source_pwd> <ied_dest_pwd>")
         return    
     IE_USERNAME = argv[1]
     IED_PWD_SRC = argv[2]
     IED_PWD_DEST = argv[3]
-    #IEM_PWD = argv[4]
    
     # POST login
     ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_PWD_SRC)
-    #iem_api_access_token = loginTo(IEM_LOGIN_URL, IE_USERNAME, IEM_PWD)
 
     # INSTALL  app on first device (if not installed) - LOOP until installed
-    # appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)    
     if (checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token) == APP_NOT_INSTALLED):
         appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEVICE_VIR1)
-    #appID = APP_NOT_INSTALLED
     appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
     while(appID==APP_NOT_INSTALLED):
         print("installing...")
@@ -176,10 +172,11 @@ def appControl (url, api_token, app_id, operation):
 # TODO Fix the deadlock
 def devInfo (url, api_token):
     ied_res_dev_info = requests.get(url = url, headers={'Authorization' : api_token}, verify=False)
-    if(ied_res_dev_info.status_code==500): ## something went wrong, repeat the request
-        print("Error Code %d Retrying to check device status..." %(ied_res_dev_info.status_code))
-        devInfo(url, api_token)
     if (ied_res_dev_info.status_code!=200):
+        if(ied_res_dev_info.status_code==500): ## something went wrong, repeat the request
+            print("Error Code %d Retrying to check device status..." %(ied_res_dev_info.status_code))
+            time.sleep(2) # slow down the subsequent call
+            return devInfo(url, api_token)
         raise ValueError("Something went wrong in the dev info api. Error code = "+str(ied_res_dev_info.status_code))
     ied_cpu_perc = ied_res_dev_info.json()["data"]["CpuPercentage"]
     ied_mem_perc = ied_res_dev_info.json()["data"]["MemoryPercentage"]
