@@ -66,53 +66,54 @@ DEVICE_VIR2 = 3
 
 def main():
     # check args
-    if (len(argv)<5):
-        print("usage -- python <prog_name> <ied_user> <ied_source_pwd> <ied_dest_pwd> <iem_pwd>")
+    if (len(argv)<4):
+        print("usage -- python <prog_name> <ied_user> <ied_source_pwd> <ied_dest_pwd>")# <iem_pwd>")
         return    
     IE_USERNAME = argv[1]
     IED_PWD_SRC = argv[2]
     IED_PWD_DEST = argv[3]
-    IEM_PWD = argv[4]
+    #IEM_PWD = argv[4]
    
     # POST login
-    # ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_PWD_SRC)
-    # #iem_api_access_token = loginTo(IEM_LOGIN_URL, IE_USERNAME, IEM_PWD)
+    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_PWD_SRC)
+    #iem_api_access_token = loginTo(IEM_LOGIN_URL, IE_USERNAME, IEM_PWD)
 
-    # # Install app on first device (if not installed) - Loop until installed
+    # INSTALL  app on first device (if not installed) - LOOP until installed
     # appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)    
-    # if (appID == APP_NOT_INSTALLED):
-    #     appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEVICE_VIR1)
-    # appID = APP_NOT_INSTALLED
-    # while(appID==APP_NOT_INSTALLED):
-    #     print("installing...")
-    #     time.sleep(5)
-    #     appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
-    # print("App Installed on first device")
+    if (checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token) == APP_NOT_INSTALLED):
+        appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEVICE_VIR1)
+    #appID = APP_NOT_INSTALLED
+    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    while(appID==APP_NOT_INSTALLED):
+        print("installing...")
+        time.sleep(5)
+        appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    print("App Installed on first device")
 
-    # # GET Dev Info - Loop till threshold
-    # while True:
-    #     print("Checking Device Status...")
-    #     mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
-    #     print("\nThe perc of MEM used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(mem_usage)))
-    #     print("\nThe perc of CPU used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(cpu_usage)))
-    #     if (float(cpu_usage)>MAX_CPU_PERC):
-    #         break
+    # GET Dev Info - Loop till threshold
+    while True:
+        print("Checking Device Status...")
+        mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
+        print("\nThe perc of MEM used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(mem_usage)))
+        print("\nThe perc of CPU used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(cpu_usage)))
+        if (float(cpu_usage)>MAX_CPU_PERC):
+            break
 
-    # print("Trying to load balancing the device...")
+    print("Trying to load balancing the device...")
 
-    # migr_start_time = time.time()
+    migr_start_time = time.time()
 
-    # # GET app ID - STOP app - UNINSTALL app
-    # appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
-    # print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
-    # if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
-    #     print("App %s successfully uninstalled from first device\n" %(APP_TO_CHECK))
+    # GET app ID - STOP app - UNINSTALL app from source device
+    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
+    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
+        print("App %s successfully uninstalled from first device\n" %(APP_TO_CHECK))
 
-    # # DEPLOY
-    # appDeploy(DEPLOY_URL, './compose.yml', APP_TO_CHECK, APP_VER)
-    # print("Installing app %s on second device...\n" %(APP_TO_CHECK))
+    # DEPLOY on destination device
+    appDeploy(DEPLOY_URL, './compose.yml', APP_TO_CHECK, APP_VER)
+    print("Installing app %s on second device...\n" %(APP_TO_CHECK))
 
-    # CHECK INSTALLATION
+    # CHECK INSTALLATION on destination device
     ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_2, IE_USERNAME, IED_PWD_DEST)
     appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)
     while(appID==APP_NOT_INSTALLED):
@@ -120,9 +121,9 @@ def main():
         time.sleep(2)
         appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)
     
-    # migr_end_time = time.time()       
-    # print("App migrated on second device, cluster balanced, time exec = " + str(migr_end_time-migr_start_time))
-    # time.sleep(20)
+    migr_end_time = time.time()       
+    print("App migrated on second device, cluster balanced, time exec = " + str(migr_end_time-migr_start_time))
+    time.sleep(20)
 
     # UNINSTALL app from the destination for further runs
     print("\nUninstalling app from second device for further runs...\n")
@@ -176,7 +177,7 @@ def appControl (url, api_token, app_id, operation):
 def devInfo (url, api_token):
     ied_res_dev_info = requests.get(url = url, headers={'Authorization' : api_token}, verify=False)
     if(ied_res_dev_info.status_code==500): ## something went wrong, repeat the request
-        print("Retrying to check device status...")
+        print("Error Code %d Retrying to check device status..." %(ied_res_dev_info.status_code))
         devInfo(url, api_token)
     if (ied_res_dev_info.status_code!=200):
         raise ValueError("Something went wrong in the dev info api. Error code = "+str(ied_res_dev_info.status_code))
