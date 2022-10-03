@@ -9,7 +9,13 @@ import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-#----------------------------------------------------------------------------
+#@----------------------------------------------@
+# TODO                                          #
+#   - Parametrize R->V  V->V    V->R            #
+#   - Fix the deadlock in devInfo function      #
+#                                               #
+#@----------------------------------------------@
+
 # Endpoints & IDs
 MAN_ENDPOINT = "10.0.7.253:9443"
 MW_ENDPOINT = "10.0.7.132:8083"
@@ -40,7 +46,7 @@ GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 
 # IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/p.service/api/v4/applications/b490fab908b74244af564652dd4ff552/batch?operation=installApplication&allow=true"
 
-IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552"
+# IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552"
 
 DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 
@@ -58,11 +64,6 @@ DEVICE_PHY = 1
 DEVICE_VIR1 = 2
 DEVICE_VIR2 = 3
 
-#----------------------------------------------------------------------------
-# TODO 
-    #   - Timing set
-    #   - Test all
-    #   - Parametrize R->V  V->V    V->R
 
 def main():
     # check args
@@ -169,7 +170,6 @@ def appControl (url, api_token, app_id, operation):
     return True
 
 
-# TODO Fix the deadlock
 def devInfo (url, api_token):
     ied_res_dev_info = requests.get(url = url, headers={'Authorization' : api_token}, verify=False)
     if (ied_res_dev_info.status_code!=200):
