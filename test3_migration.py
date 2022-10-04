@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 #@----------------------------------------------@
 # TODO                                          #
-#   - Log on file                               #
+#                                               #
 #   - Fix the deadlock in devInfo function      #
 #                                               #
 #@----------------------------------------------@
@@ -62,10 +62,9 @@ APP_NOT_INSTALLED = "app is not here!"
 DEVICE_PHY = 1
 DEVICE_VIR1 = 2
 DEVICE_VIR2 = 3
+DIRECTIONS_STRING = "VV (from virtual to virtual) - PV (from physical to virtual) - VP (from vritual to physical)"
 USAGE = """usage -- python <prog_name> -d <direction> <ied_user> <ied_source_pwd> <ied_dest_pwd>
-            \n\t Direction = VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)
-        """
-DIRECTIONS = "VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)"
+        Allowed directions = \n\t\t"""+DIRECTIONS_STRING
 DEBUG_LOG_FILE_NAME="migration.log"
 DEBUG_LOG_PATH="./out/"
 DEBUG_LOG_COMPLETE_PATH = DEBUG_LOG_PATH+DEBUG_LOG_FILE_NAME
@@ -96,7 +95,7 @@ def main(argv):
         elif (opt in ("-d", "--direction")):
             direction = arg
             if (direction not in ("VV", "PV", "VP")):
-                print ("Direction Wrong.\nUSE- "+DIRECTIONS)
+                print ("Direction Wrong.\n"+USAGE)
                 sys.exit(3)
     IE_USERNAME = args[0]
     IED_PWD_SRC = args[1]
