@@ -5,13 +5,14 @@ import requests
 import json
 import time
 import urllib3
-import os
+import logging
+from pathlib import Path
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 #@----------------------------------------------@
 # TODO                                          #
-#   - Parametrize R->V  V->V    V->R            #
+#   - Log on file                               #
 #   - Fix the deadlock in devInfo function      #
 #                                               #
 #@----------------------------------------------@
@@ -22,15 +23,15 @@ MW_ENDPOINT = "10.0.7.132:8083"
 PHY_DEV_ENDPOINT = "192.168.101.23"
 VIR_DEV_ENDPOINT_1 = "10.0.7.249"
 VIR_DEV_ENDPOINT_2 = "10.0.7.60"
-IED_ID_PHY = "08efe36153fb4e559c3e8ffcbe9b6ccc"
-IED_ID_VIR_1 = "6021b42db4bc4f6da8aca78a65e45dd2"
-IED_ID_VIR_2 = "b3dd9c7cf7b347668624b66e04fd5592"
+# IED_ID_PHY = "08efe36153fb4e559c3e8ffcbe9b6ccc"
+# IED_ID_VIR_1 = "6021b42db4bc4f6da8aca78a65e45dd2"
+# IED_ID_VIR_2 = "b3dd9c7cf7b347668624b66e04fd5592"
 
 # APIs
 IED_LOGIN_URL_PHY = "https://"+PHY_DEV_ENDPOINT+"/device/edge/api/v1/login/direct"
 IED_LOGIN_URL_VIR_1 = "https://"+VIR_DEV_ENDPOINT_1+"/device/edge/api/v1/login/direct"
 IED_LOGIN_URL_VIR_2 = "https://"+VIR_DEV_ENDPOINT_2+"/device/edge/api/v1/login/direct"
-IEM_LOGIN_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
+# IEM_LOGIN_URL = "https://"+MAN_ENDPOINT+"/portal/api/v1/login/direct"
 
 IED_SYS_INFO_URL_PHY = "https://"+PHY_DEV_ENDPOINT+"/device/edge/b.service/api/v1/system-info"
 IED_SYS_INFO_URL_VIR_1 = "https://"+VIR_DEV_ENDPOINT_1+"/device/edge/b.service/api/v1/system-info"
@@ -43,13 +44,11 @@ APP_CTRL_DEV_VIR_1 = "https://" + VIR_DEV_ENDPOINT_1 + "/device/edge/b.service/a
 APP_CTRL_DEV_VIR_2 = "https://" + VIR_DEV_ENDPOINT_2 + "/device/edge/b.service/api/v1/applications/"
 APP_CTRL_DEV_PHY = "https://" + PHY_DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/"
 
-GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
-
+# GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 # IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/p.service/api/v4/applications/b490fab908b74244af564652dd4ff552/batch?operation=installApplication&allow=true"
-
 # IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552"
+#DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 
-DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
 DEPLOY_ON_URL = "http://"+MW_ENDPOINT+"/deployOn"
 
 # Threshold
@@ -67,6 +66,9 @@ USAGE = """usage -- python <prog_name> -d <direction> <ied_user> <ied_source_pwd
             \n\t Direction = VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)
         """
 DIRECTIONS = "VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)"
+DEBUG_LOG_FILE_NAME="migration.log"
+DEBUG_LOG_PATH="./out/"
+DEBUG_LOG_COMPLETE_PATH = DEBUG_LOG_PATH+DEBUG_LOG_FILE_NAME
 
 # EXEC constants
 LOGIN_SOURCE_URL, LOGIN_DEST_URL = "", ""
@@ -96,13 +98,21 @@ def main(argv):
             if (direction not in ("VV", "PV", "VP")):
                 print ("Direction Wrong.\nUSE- "+DIRECTIONS)
                 sys.exit(3)
-    print("Starting test with migration mode: "+direction)
     IE_USERNAME = args[0]
     IED_PWD_SRC = args[1]
     IED_PWD_DEST = args[2]
 
+    # LOGGING and INIT
+    print("Starting test with migration mode: "+direction)
+    Path("./out").mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger('MigrationTest')
+    logger.setLevel(logging.DEBUG)
+    log_fh = logging.FileHandler(DEBUG_LOG_COMPLETE_PATH)
+    log_fh.setLevel(logging.DEBUG)
+    logger.addHandler(log_fh)
+    #logger.debug("Starting test with migration mode: "+direction)
     initConstants(direction)
-
+    
     # POST login
     ied_api_access_token = loginTo(LOGIN_SOURCE_URL, IE_USERNAME, IED_PWD_SRC)
 
@@ -122,6 +132,7 @@ def main(argv):
         mem_usage, cpu_usage = devInfo(DEV_SOURCE_INFO_URL, ied_api_access_token)
         print("\nThe perc of MEM used on device source is: %s\n" %(str(mem_usage)))
         print("\nThe perc of CPU used on device source is: %s\n" %(str(cpu_usage)))
+        logger.debug("MEM used = %s; CPU used = %s" %(str(mem_usage), str(cpu_usage)))
         if (float(cpu_usage)>MAX_CPU_PERC):
             break
 
@@ -147,8 +158,10 @@ def main(argv):
         time.sleep(2)
         appID = checkAppInstalled(LIST_APP_DEST_URL, APP_TO_CHECK, ied_api_access_token)
     
-    migr_end_time = time.time()       
-    print("App migrated on second device, cluster balanced, time exec = " + str(migr_end_time-migr_start_time))
+    migr_end_time = time.time()
+    migr_time = migr_end_time-migr_start_time
+    print("App migrated on second device, cluster balanced, time exec = " + str(migr_time))
+    logger.debug(migr_time)
     time.sleep(20)
 
     # UNINSTALL app from the destination for further runs
@@ -221,6 +234,7 @@ def appDeploy(url, file, appToCheck, appVer, device=None):
     if (res_mw_deploy.status_code!=200):
         raise ValueError("Something went wrong in the app installation. Error code = " + str(res_mw_deploy.status_code)+ "\nTEXT = " + str(res_mw_deploy.text))    
     return
+
 
 def initConstants(direction):
     global LOGIN_SOURCE_URL, LOGIN_DEST_URL, LIST_APP_SOURCE_URL, LIST_APP_DEST_URL
