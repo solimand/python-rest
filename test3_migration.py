@@ -1,6 +1,6 @@
 from email import header
 from sys import argv
-import sys
+import sys , getopt
 import requests
 import json
 import time
@@ -41,6 +41,7 @@ LIST_APP_DEV_PHY = "https://" + PHY_DEV_ENDPOINT + "/device/edge/b.service/api/v
 
 APP_CTRL_DEV_VIR_1 = "https://" + VIR_DEV_ENDPOINT_1 + "/device/edge/b.service/api/v1/applications/"
 APP_CTRL_DEV_VIR_2 = "https://" + VIR_DEV_ENDPOINT_2 + "/device/edge/b.service/api/v1/applications/"
+APP_CTRL_DEV_PHY = "https://" + PHY_DEV_ENDPOINT + "/device/edge/b.service/api/v1/applications/"
 
 GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 
@@ -49,7 +50,6 @@ GET_JOB_STATUS = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches/"
 # IEM_INSTALL_ON_IED = "https://"+MAN_ENDPOINT+"/portal/api/v1/batches?operation=installApplication&appid=b490fab908b74244af564652dd4ff552"
 
 DEPLOY_URL = "http://"+MW_ENDPOINT+"/deploy"
-
 DEPLOY_ON_URL = "http://"+MW_ENDPOINT+"/deployOn"
 
 # Threshold
@@ -63,36 +63,65 @@ APP_NOT_INSTALLED = "app is not here!"
 DEVICE_PHY = 1
 DEVICE_VIR1 = 2
 DEVICE_VIR2 = 3
+USAGE = """usage -- python <prog_name> -d <direction> <ied_user> <ied_source_pwd> <ied_dest_pwd>
+            \n\t Direction = VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)
+        """
+DIRECTIONS = "VV (from virtual to virtual) - PV (from real to virtual) - VP (from vritual to real)"
+
+# EXEC constants
+LOGIN_SOURCE_URL, LOGIN_DEST_URL = "", ""
+LIST_APP_SOURCE_URL, LIST_APP_DEST_URL = "", ""
+DEV_SOURCE, DEV_DEST, DEV_SOURCE_INFO_URL = "", "", ""
+APP_CTRL_SOURCE_URL, APP_CTRL_DEST_URL = "", ""
 
 
-def main():
-    # check args
-    if (len(argv)<4):
-        print("usage -- python <prog_name> <ied_user> <ied_source_pwd> <ied_dest_pwd>")
-        return    
-    IE_USERNAME = argv[1]
-    IED_PWD_SRC = argv[2]
-    IED_PWD_DEST = argv[3]
-   
+def main(argv):
+
+    #ARGS CHECK
+    try:
+        opts, args = getopt.getopt(argv,"hd:",["direction="])
+    except getopt.GetoptError:
+        print ("Options parsing exception.\n"+USAGE)
+        sys.exit(2)
+    if(len(args))<3:
+        print ("Argument parsing exception.\n"+USAGE)
+        sys.exit(3)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print(USAGE)
+            sys.exit(0)
+        elif (opt in ("-d", "--direction")):
+            direction = arg
+            if (direction not in ("VV", "PV", "VP")):
+                print ("Direction Wrong.\nUSE- "+DIRECTIONS)
+                sys.exit(3)
+    print("Starting test with migration mode: "+direction)
+    IE_USERNAME = args[0]
+    IED_PWD_SRC = args[1]
+    IED_PWD_DEST = args[2]
+
+    initConstants(direction)
+
     # POST login
-    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_1, IE_USERNAME, IED_PWD_SRC)
+    ied_api_access_token = loginTo(LOGIN_SOURCE_URL, IE_USERNAME, IED_PWD_SRC)
 
     # INSTALL  app on first device (if not installed) - LOOP until installed
-    if (checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token) == APP_NOT_INSTALLED):
-        appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEVICE_VIR1)
-    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    if (checkAppInstalled(LIST_APP_SOURCE_URL, APP_TO_CHECK, ied_api_access_token) == APP_NOT_INSTALLED):
+        appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEV_SOURCE)
+    appID = checkAppInstalled(LIST_APP_SOURCE_URL, APP_TO_CHECK, ied_api_access_token)
     while(appID==APP_NOT_INSTALLED):
         print("installing...")
         time.sleep(5)
-        appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+        appID = checkAppInstalled(LIST_APP_SOURCE_URL, APP_TO_CHECK, ied_api_access_token)
     print("App Installed on first device")
 
     # GET Dev Info - Loop till threshold
     while True:
         print("Checking Device Status...")
-        mem_usage, cpu_usage = devInfo(IED_SYS_INFO_URL_VIR_1, ied_api_access_token)
-        print("\nThe perc of MEM used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(mem_usage)))
-        print("\nThe perc of CPU used on device %s is: %s\n" %(str(VIR_DEV_ENDPOINT_1), str(cpu_usage)))
+        mem_usage, cpu_usage = devInfo(DEV_SOURCE_INFO_URL, ied_api_access_token)
+        print("\nThe perc of MEM used on device source is: %s\n" %(str(mem_usage)))
+        print("\nThe perc of CPU used on device source is: %s\n" %(str(cpu_usage)))
         if (float(cpu_usage)>MAX_CPU_PERC):
             break
 
@@ -100,23 +129,23 @@ def main():
 
     migr_start_time = time.time()
 
-    # GET app ID - STOP app - UNINSTALL app from source device
-    appID = checkAppInstalled(LIST_APP_DEV_VIR_1, APP_TO_CHECK, ied_api_access_token)
+    # GET app ID - UNINSTALL app from source device
+    appID = checkAppInstalled(LIST_APP_SOURCE_URL, APP_TO_CHECK, ied_api_access_token)
     print ("The App ID of the %s app is %s\n" %(APP_TO_CHECK, appID))
-    if (appControl(APP_CTRL_DEV_VIR_1, ied_api_access_token, appID, "uninstall")):
+    if (appControl(APP_CTRL_SOURCE_URL, ied_api_access_token, appID, "uninstall")):
         print("App %s successfully uninstalled from first device\n" %(APP_TO_CHECK))
 
     # DEPLOY on destination device
-    appDeploy(DEPLOY_URL, './compose.yml', APP_TO_CHECK, APP_VER)
+    appDeploy(DEPLOY_ON_URL, './compose.yml', APP_TO_CHECK, APP_VER, DEV_DEST)
     print("Installing app %s on second device...\n" %(APP_TO_CHECK))
 
     # CHECK INSTALLATION on destination device
-    ied_api_access_token = loginTo(IED_LOGIN_URL_VIR_2, IE_USERNAME, IED_PWD_DEST)
-    appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)
+    ied_api_access_token = loginTo(LOGIN_DEST_URL, IE_USERNAME, IED_PWD_DEST)
+    appID = checkAppInstalled(LIST_APP_DEST_URL, APP_TO_CHECK, ied_api_access_token)
     while(appID==APP_NOT_INSTALLED):
         print("installing...")
         time.sleep(2)
-        appID = checkAppInstalled(LIST_APP_DEV_VIR_2, APP_TO_CHECK, ied_api_access_token)
+        appID = checkAppInstalled(LIST_APP_DEST_URL, APP_TO_CHECK, ied_api_access_token)
     
     migr_end_time = time.time()       
     print("App migrated on second device, cluster balanced, time exec = " + str(migr_end_time-migr_start_time))
@@ -124,7 +153,7 @@ def main():
 
     # UNINSTALL app from the destination for further runs
     print("\nUninstalling app from second device for further runs...\n")
-    if (appControl(APP_CTRL_DEV_VIR_2, ied_api_access_token, appID, "uninstall")):
+    if (appControl(APP_CTRL_DEST_URL, ied_api_access_token, appID, "uninstall")):
         print("App %s successfully uninstalled from second device\n" %(APP_TO_CHECK))
     time.sleep(20)
 
@@ -193,7 +222,41 @@ def appDeploy(url, file, appToCheck, appVer, device=None):
         raise ValueError("Something went wrong in the app installation. Error code = " + str(res_mw_deploy.status_code)+ "\nTEXT = " + str(res_mw_deploy.text))    
     return
 
+def initConstants(direction):
+    global LOGIN_SOURCE_URL, LOGIN_DEST_URL, LIST_APP_SOURCE_URL, LIST_APP_DEST_URL
+    global DEV_SOURCE, DEV_DEST, DEV_SOURCE_INFO_URL, APP_CTRL_SOURCE_URL, APP_CTRL_DEST_URL
+    if(direction == "VV"):
+        LOGIN_SOURCE_URL=IED_LOGIN_URL_VIR_1
+        LOGIN_DEST_URL=IED_LOGIN_URL_VIR_2
+        LIST_APP_SOURCE_URL=LIST_APP_DEV_VIR_1
+        LIST_APP_DEST_URL=LIST_APP_DEV_VIR_2
+        DEV_SOURCE=DEVICE_VIR1
+        DEV_DEST=DEVICE_VIR2
+        DEV_SOURCE_INFO_URL=IED_SYS_INFO_URL_VIR_1
+        APP_CTRL_SOURCE_URL=APP_CTRL_DEV_VIR_1
+        APP_CTRL_DEST_URL=APP_CTRL_DEV_VIR_2
+    elif (direction == "PV"):
+        LOGIN_SOURCE_URL=IED_LOGIN_URL_PHY
+        LOGIN_DEST_URL=IED_LOGIN_URL_VIR_1
+        LIST_APP_SOURCE_URL=LIST_APP_DEV_PHY
+        LIST_APP_DEST_URL=LIST_APP_DEV_VIR_1
+        DEV_SOURCE=DEVICE_PHY
+        DEV_DEST=DEVICE_VIR1
+        DEV_SOURCE_INFO_URL=IED_SYS_INFO_URL_PHY
+        APP_CTRL_SOURCE_URL=APP_CTRL_DEV_PHY
+        APP_CTRL_DEST_URL=APP_CTRL_DEV_VIR_1
+    elif (direction == "VP"):
+        LOGIN_SOURCE_URL=IED_LOGIN_URL_VIR_1
+        LOGIN_DEST_URL=IED_LOGIN_URL_PHY
+        LIST_APP_SOURCE_URL=LIST_APP_DEV_VIR_1
+        LIST_APP_DEST_URL=LIST_APP_DEV_PHY
+        DEV_SOURCE=DEVICE_VIR1
+        DEV_DEST=DEVICE_PHY
+        DEV_SOURCE_INFO_URL=IED_SYS_INFO_URL_VIR_1
+        APP_CTRL_SOURCE_URL=APP_CTRL_DEV_VIR_1
+        APP_CTRL_DEST_URL=APP_CTRL_DEV_PHY
+
 #----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
