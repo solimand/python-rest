@@ -132,7 +132,7 @@ def main(argv):
         mem_usage, cpu_usage = devInfo(DEV_SOURCE_INFO_URL, ied_api_access_token)
         print("\nThe perc of MEM used on device source is: %s\n" %(str(mem_usage)))
         print("\nThe perc of CPU used on device source is: %s\n" %(str(cpu_usage)))
-        logger.debug("MEM used = %s; CPU used = %s" %(str(mem_usage), str(cpu_usage)))
+        logger.debug("From "+direction[0]+ " to --> "+direction[1]+": MEM used = %s; CPU used = %s" %(str(mem_usage), str(cpu_usage)))
         if (float(cpu_usage)>MAX_CPU_PERC):
             break
 
