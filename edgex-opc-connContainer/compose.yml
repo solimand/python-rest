@@ -1,0 +1,18 @@
+version: '2.4'
+
+services:
+  device-opcua:
+    image: opc-conn:latest
+    container_name: device-opcua
+    # restart: unless-stopped
+    ports:
+      - "59999:59999"
+    networks: 
+      - proxy-redirect
+    command: "${FREQ}"  # NOTE: export FREQ=<int> in shell
+
+
+networks:
+  proxy-redirect:
+    external: false
+    name: jakarta_edgex-network
